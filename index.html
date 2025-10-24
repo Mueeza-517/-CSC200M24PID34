@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solitaire Game</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Background Elements -->
+      <!--   <div class="bg-elements">
+            <div class="bg-card bg-card-1">♠</div>
+            <div class="bg-card bg-card-2">♥</div>
+            <div class="bg-card bg-card-3">♣</div>
+            <div class="bg-card bg-card-4">♦</div>
+        </div> -->
+
+        <header class="game-header">
+            <div class="header-content">
+                <h1 class="game-title">Classic Solitaire</h1>
+                <div class="game-stats">
+                    <div class="stat-box">
+                        <i class="fas fa-chess-board"></i>
+                        <span>Moves: <strong id="moveCount">0</strong></span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-clock"></i>
+                        <span>Time: <strong id="timer">00:00</strong></span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-star"></i>
+                        <span>Score: <strong id="score">0</strong></span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="game-controls">
+            <button class="btn btn-primary" id="newGame">
+                <i class="fas fa-plus-circle"></i> New Game
+            </button>
+            <button class="btn btn-secondary" id="drawCard">
+                <i class="fas fa-draw-polygon"></i> Draw Card
+            </button>
+            <button class="btn btn-info" id="hintBtn">
+                <i class="fas fa-lightbulb"></i> Hint
+            </button>
+            <button class="btn btn-warning" id="undoBtn">
+                <i class="fas fa-undo"></i> Undo
+            </button>
+            <button class="btn btn-info" id="redoBtn">
+                <i class="fas fa-redo"></i> Redo
+            </button>
+        </div>
+
+        <div class="game-board">
+            <!-- Stock and Waste Area -->
+            <div class="top-section">
+                <div class="stock-waste-area">
+                    <div class="pile-container">
+                        <div class="pile-label">Stock</div>
+                        <div class="pile stock" id="stock">
+                            <div class="card-stack">
+                                <div class="card back animated-card"></div>
+                                <div class="card back animated-card"></div>
+                                <div class="card back animated-card"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pile-container">
+                        <div class="pile-label">Waste</div>
+                        <div class="pile waste" id="waste"></div>
+                    </div>
+                </div>
+
+                <div class="foundations-area">
+                    <div class="foundations">
+                        <div class="foundation-container">
+                            <div class="foundation hearts" data-suit="hearts">
+                                <div class="foundation-label">♥</div>
+                            </div>
+                        </div>
+                        <div class="foundation-container">
+                            <div class="foundation diamonds" data-suit="diamonds">
+                                <div class="foundation-label">♦</div>
+                            </div>
+                        </div>
+                        <div class="foundation-container">
+                            <div class="foundation clubs" data-suit="clubs">
+                                <div class="foundation-label">♣</div>
+                            </div>
+                        </div>
+                        <div class="foundation-container">
+                            <div class="foundation spades" data-suit="spades">
+                                <div class="foundation-label">♠</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tableau Area -->
+            <div class="tableau-section">
+                <div class="tableau-labels">
+                    <div class="tableau-label">1</div>
+                    <div class="tableau-label">2</div>
+                    <div class="tableau-label">3</div>
+                    <div class="tableau-label">4</div>
+                    <div class="tableau-label">5</div>
+                    <div class="tableau-label">6</div>
+                    <div class="tableau-label">7</div>
+                </div>
+                <div class="tableau" id="tableau">
+                    <div class="tableau-column" data-col="0"></div>
+                    <div class="tableau-column" data-col="1"></div>
+                    <div class="tableau-column" data-col="2"></div>
+                    <div class="tableau-column" data-col="3"></div>
+                    <div class="tableau-column" data-col="4"></div>
+                    <div class="tableau-column" data-col="5"></div>
+                    <div class="tableau-column" data-col="6"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Messages -->
+        <div id="winMessage" class="game-message hidden">
+            <div class="message-content">
+                <h2>🎉 Congratulations! 🎉</h2>
+                <p>You've won the game!</p>
+                <div class="final-stats">
+                    <p>Moves: <span id="finalMoves">0</span></p>
+                    <p>Time: <span id="finalTime">00:00</span></p>
+                    <p>Score: <span id="finalScore">0</span></p>
+                </div>
+                <button class="btn btn-success" id="playAgain">
+                    <i class="fas fa-redo"></i> Play Again
+                </button>
+            </div>
+        </div>
+
+        <div id="hintMessage" class="game-message hint-message hidden">
+            <div class="message-content">
+                <h3>💡 Hint</h3>
+                <p id="hintText"></p>
+                <button class="btn btn-info" id="closeHint">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script src="custom_structures.js"></script>
+</body>
+</html>

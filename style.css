@@ -1,0 +1,556 @@
+:root {
+    --primary-color: #2c5530;
+    --secondary-color: #4a7c59;
+    --accent-color: #8fb996;
+    --card-red: #e74c3c;
+    --card-black: #2c3e50;
+    --gold: #f1c40f;
+    --silver: #bdc3c7;
+    --success: #27ae60;
+    --warning: #e67e22;
+    --danger: #e74c3c;
+    --info: #3498db;
+    
+    --card-width: 100px;
+    --card-height: 140px;
+    --card-radius: 8px;
+    --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #1a2f1a 0%, #2c5530 50%, #4a7c59 100%);
+    color: white;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+}
+
+/* Header */
+.game-header {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px 30px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.game-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, var(--gold), var(--silver));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.game-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.stat-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Buttons */
+.game-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background: var(--success);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--info);
+    color: white;
+}
+
+.btn-info {
+    background: #9b59b6;
+    color: white;
+}
+
+.btn-warning {
+    background: var(--warning);
+    color: white;
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+
+/* Game Board */
+.game-board {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    border-radius: 25px;
+    padding: 30px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Top Section */
+.top-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 50px;
+    gap: 40px;
+}
+
+.stock-waste-area {
+    display: flex;
+    gap: 30px;
+}
+
+.foundations-area {
+    flex: 1;
+    flex-direction: right;
+}
+
+.pile-label, .tableau-label, .foundation-label {
+    text-align: center;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 8px;
+}
+
+/* Piles */
+.pile {
+    width: var(--card-width);
+    height: var(--card-height);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: var(--card-radius);
+    position: relative;
+    transition: var(--transition);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Foundations */
+.foundations {
+    display: flex;
+    gap: 15px;
+}
+
+.foundation {
+    width: var(--card-width);
+    height: var(--card-height);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--card-radius);
+    background: rgba(255, 255, 255, 0.08);
+    transition: var(--transition);
+    position: relative;
+}
+
+/* Tableau */
+.tableau-section {
+    position: relative;
+    height:50vh;
+}
+
+.tableau-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 calc(var(--card-width) / 2);
+}
+
+.tableau {
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+}
+
+.tableau-column {
+    width: var(--card-width);
+    min-height: var(--card-height);
+    border-radius: var(--card-radius);
+    position: relative;
+}
+
+/* Cards */
+.card {
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    position: absolute;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--card-shadow);
+    user-select: none;
+}
+
+.card.back {
+    background: linear-gradient(135deg, #8B4513, #A0522D);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.card.front {
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px;
+    font-weight: bold;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.card.red {
+    color: var(--card-red);
+}
+
+.card.black {
+    color: var(--card-black);
+}
+
+.card .rank {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.card .suit {
+    font-size: 1.8rem;
+    text-align: center;
+}
+
+.card .corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+}
+
+.card .large {
+    font-size: 3rem;
+    opacity: 0.9;
+}
+
+/* Card styling with proper corner design */
+.card.front {
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    display: grid;
+    grid-template-areas: 
+        "topleft topright"
+        "bottomleft bottomright";
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    padding: 8px;
+    font-weight: bold;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+/* Corner positioning */
+.card .corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    font-size: 0.9rem;
+}
+
+.card .corner.top-left {
+    grid-area: topleft;
+    align-self: start;
+    justify-self: start;
+    text-align: left;
+}
+
+.card .corner.top-right {
+    grid-area: topright;
+    align-self: start;
+    justify-self: end;
+    text-align: right;
+    transform: rotate(180deg);
+}
+
+.card .corner.bottom-left {
+    grid-area: bottomleft;
+    align-self: end;
+    justify-self: start;
+    text-align: left;
+    flex-direction: column-reverse;
+}
+
+.card .corner.bottom-right {
+    grid-area: bottomright;
+    align-self: end;
+    justify-self: end;
+    text-align: right;
+    flex-direction: column-reverse;
+    transform: rotate(180deg);
+}
+
+.card .rank {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.card .suit {
+    font-size: 1rem;
+}
+
+/* FIXED: Drag and Drop Styles */
+.card[draggable="true"] {
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.card[draggable="true"]:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.card[draggable="true"]:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+/* Drag over states */
+.tableau-column.drag-over,
+.foundation.drag-over {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+/* Waste pile styling */
+.waste {
+    position: relative;
+    min-height: var(--card-height);
+    width: calc(var(--card-width) + 60px); /* Extra width for overlapping cards */
+    border: 2px dashed transparent;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.waste.drag-over {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+}
+
+.waste .card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: all 0.3s ease;
+}
+
+/* Make ALL waste cards draggable */
+.waste .card[draggable="false"] {
+    draggable: true !important;
+}
+
+/* Tableau column styling */
+.tableau-column {
+    position: relative;
+    min-height: 400px;
+    width: var(--card-width);
+    border: 2px dashed transparent;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.tableau-column .card {
+    position: absolute;
+    transition: margin-top 0.3s ease;
+}
+
+/* Visual feedback for accessible cards */
+.accessible-card {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Button states */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn:disabled:hover {
+    transform: none !important;
+}
+/* Card stacking in tableau */
+.tableau-column .card {
+    margin-top: 25px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.tableau-column .card:first-child {
+    margin-top: 0;
+}
+
+/* Game Messages */
+.game-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.message-content {
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,240,240,0.98));
+    color: #2c3e50;
+    padding: 40px;
+    border-radius: 25px;
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+}
+
+/* Center the Got it button */
+#closeHint {
+  display: block;
+  margin: 0 auto;
+  background: linear-gradient(90deg, #8b5cf6, #9333ea);
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 8px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+#closeHint:hover {
+  background: linear-gradient(90deg, #7c3aed, #6d28d9);
+}
+
+/* Tableau column styling for stair pattern */
+.tableau-column {
+    position: relative;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Cards in tableau should stack vertically */
+.tableau-column .card {
+    position: absolute;
+    transition: margin-top 0.3s ease;
+}
+
+/* Waste pile styling for horizontal stacking */
+.waste {
+    position: relative;
+    display: flex;
+    min-height: var(--card-height);
+}
+
+.waste .card {
+    position: absolute;
+    transition: transform 0.3s ease;
+}
+
+/* Visual feedback for accessible cards */
+.accessible-card {
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.accessible-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Button states */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn:disabled:hover {
+    transform: none !important;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.glow {
+    box-shadow: 0 0 20px var(--gold);
+}
+
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.animated-card {
+    animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
