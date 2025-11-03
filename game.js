@@ -71,14 +71,14 @@ class SolitaireGame {
         this.saveGameState();
         this.renderGame();
         this.updateStats();
-        
+
         // Setup event listeners and start game features
         this.setupEventListeners();
         this.startTimer();
         this.setupDragAndDrop();
         this.startMoveChecker();
     }
-   
+
     createDeck() {
         // Deck is creating
         const deck = new Stack();
@@ -192,10 +192,10 @@ class SolitaireGame {
     startGameAfterInstructions() {
         // Hide the instructions
         document.getElementById('hintMessage').classList.add('hidden');
-        
+
         // Show the close button again for regular hints
         document.getElementById('closeHint').style.display = 'block';
-        
+
         // Initialize the game
         this.initializeGame();
     }
@@ -351,8 +351,10 @@ class SolitaireGame {
             <p style="margin: 8px 0; text-align: center;"><strong>Final Score:</strong> ${this.score}</p>
             <p style="margin: 8px 0; text-align: center;"><strong>Moves:</strong> ${this.moveCount}</p>
             <p style="margin: 8px 0; text-align: center;"><strong>Time:</strong> ${document.getElementById('timer').textContent}</p>
+            <p style="margin: 15px 0; text-align: center; font-weight: bold; color: #4CAF50;">
+                Click the "New Game" button to start a new game!
+            </p>
             <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
-                <button id="newGameOut" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">New Game</button>
                 <button id="continueGame" style="padding: 10px 20px; background: #757575; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">Continue Anyway</button>
             </div>
         `;
@@ -360,15 +362,16 @@ class SolitaireGame {
         // Show the message box
         document.getElementById('hintMessage').classList.remove('hidden');
 
-        // Add event listeners to the buttons
-        document.getElementById('newGameOut').addEventListener('click', () => {
-            this.newGame();
-            this.hideHint();
-        });
+        // Use event delegation for the buttons
+        const hintMessage = document.getElementById('hintMessage');
 
-        document.getElementById('continueGame').addEventListener('click', () => {
-            this.hideHint();
-            this.consecutiveNoMoves = 0;
+        // Remove any existing click handlers and add a new one
+        hintMessage.onclick = null;
+        hintMessage.addEventListener('click', (e) => {
+            if (e.target.id === 'continueGame') {
+                this.hideHint();
+                this.consecutiveNoMoves = 0;
+            }
         });
 
         // Don't auto-hide since user needs to make a choice
@@ -385,19 +388,13 @@ class SolitaireGame {
             <p style="margin: 8px 0; text-align: center;"><strong>Final Score:</strong> ${this.score}</p>
             <p style="margin: 8px 0; text-align: center;"><strong>Moves:</strong> ${this.moveCount}</p>
             <p style="margin: 8px 0; text-align: center;"><strong>Time:</strong> ${document.getElementById('timer').textContent}</p>
-            <div style="margin-top: 20px; text-align: center;">
-                <button id="newGameRecycle" style="padding: 10px 30px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">New Game</button>
-            </div>
+            <p style="margin: 15px 0; text-align: center; font-weight: bold; color: #4CAF50;">
+                Click the "New Game" button to start a new game!
+            </p>
         `;
 
         // Show the message box
         document.getElementById('hintMessage').classList.remove('hidden');
-
-        // Add event listener to the button
-        document.getElementById('newGameRecycle').addEventListener('click', () => {
-            this.newGame();
-            this.hideHint();
-        });
 
         clearInterval(this.timerInterval);
         clearInterval(this.moveCheckInterval);
@@ -804,6 +801,14 @@ class SolitaireGame {
     }
 
     renderGame() {
+        // Reset all card styles first to ensure no dim cards
+        const allCards = document.querySelectorAll('.card');
+        allCards.forEach(card => {
+            card.style.opacity = '1';
+            card.style.boxShadow = '';
+            card.style.transform = '';
+        });
+
         this.renderStockAndWaste();
         this.renderFoundations();
         this.renderTableau();
@@ -1009,11 +1014,10 @@ class SolitaireGame {
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', e.target.getAttribute('data-card-id'));
 
+                // NO OPACITY CHANGE - Cards will not become dim during drag
                 setTimeout(() => {
                     if (this.dragSource.sequence && this.dragSource.sequence.length > 1) {
                         this.highlightSequence(this.dragSource.sequence);
-                    } else {
-                        e.target.style.opacity = '0.4';
                     }
                 }, 0);
             }
@@ -1021,11 +1025,13 @@ class SolitaireGame {
 
         document.addEventListener('dragend', (e) => {
             if (this.draggedCard) {
-                if (this.dragSource.sequence) {
-                    this.removeSequenceHighlight(this.dragSource.sequence);
-                } else {
-                    this.draggedCard.style.opacity = '1';
-                }
+                // Reset ALL card styles
+                const allCards = document.querySelectorAll('.card');
+                allCards.forEach(card => {
+                    card.style.opacity = '1';
+                    card.style.boxShadow = '';
+                });
+
                 this.draggedCard = null;
                 this.dragSource = null;
             }
@@ -1104,8 +1110,8 @@ class SolitaireGame {
         sequence.forEach(card => {
             const cardEl = document.querySelector(`[data-card-id="${card.id}"]`);
             if (cardEl) {
-                cardEl.style.opacity = '0.6';
-                cardEl.style.boxShadow = '0 0 10px gold';
+                // Only add shadow, no opacity change
+                cardEl.style.boxShadow = '0 0 15px gold';
             }
         });
     }
@@ -1114,7 +1120,6 @@ class SolitaireGame {
         sequence.forEach(card => {
             const cardEl = document.querySelector(`[data-card-id="${card.id}"]`);
             if (cardEl) {
-                cardEl.style.opacity = '1';
                 cardEl.style.boxShadow = '';
             }
         });
@@ -1211,40 +1216,34 @@ class SolitaireGame {
     }
 
     checkWinCondition() {
+        console.log("🔍 Checking win condition...");
+
+        let totalCards = 0;
         for (const suit of this.SUITS) {
-            if (this.foundations[suit].size() !== 13) {
+            const foundationSize = this.foundations[suit].size();
+            console.log(`Foundation ${suit}: ${foundationSize} cards`);
+            totalCards += foundationSize;
+
+            if (foundationSize !== 13) {
+                console.log(`❌ Foundation ${suit} is not complete (${foundationSize}/13)`);
                 return false;
             }
         }
 
+        console.log(`🎉 ALL FOUNDATIONS COMPLETE! Total cards: ${totalCards}/52`);
         this.showWinMessage();
         return true;
     }
 
     showWinMessage() {
+        console.log("🏆 showWinMessage() called!");
+
         clearInterval(this.timerInterval);
         clearInterval(this.moveCheckInterval);
-        
-        // Style the win message to be centered and beautiful
-        const winMessage = document.getElementById('winMessage');
-        winMessage.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 1000;
-            min-width: 400px;
-            max-width: 500px;
-            font-family: Arial, sans-serif;
-        `;
 
-        // Style the content inside win message
-        winMessage.innerHTML = `
+        // Use the hint message box instead of winMessage
+        document.getElementById('hintText').innerHTML = `
+        <div style="text-align: center; padding: 20px;">
             <div style="font-size: 4em; margin-bottom: 20px;">🎉</div>
             <h2 style="font-size: 2em; margin: 0 0 15px 0; color: #2E7D32;">Congratulations!</h2>
             <p style="font-size: 1.2em; margin: 0 0 25px 0; color: #666;">You've won the game!</p>
@@ -1266,36 +1265,27 @@ class SolitaireGame {
                 </div>
             </div>
 
-            <div style="margin-top: 25px;">
-                <button id="playAgainWin" style="
-                    padding: 15px 40px;
-                    background: #4CAF50;
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-size: 16px;
-                    font-weight: bold;
-                    width: 100%;
-                ">
-                    🎮 Play Again
+            <p style="margin: 20px 0; text-align: center; font-weight: bold; color: #4CAF50;">
+                Click the "New Game" button to play again!
+            </p>
+            
+            <div style="margin-top: 20px;">
+                <button id="closeWinHint" style="padding: 10px 30px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                    Continue
                 </button>
             </div>
-        `;
+        </div>
+    `;
 
-        // Update the stats
-        document.getElementById('finalMoves').textContent = this.moveCount;
-        document.getElementById('finalTime').textContent = document.getElementById('timer').textContent;
-        document.getElementById('finalScore').textContent = this.score;
+        // Show the win message in the hint box
+        document.getElementById('hintMessage').classList.remove('hidden');
 
-        // Show the win message
-        winMessage.classList.remove('hidden');
-
-        // Add event listener to the play again button
-        document.getElementById('playAgainWin').addEventListener('click', () => {
-            this.newGame();
-            winMessage.classList.add('hidden');
+        // Add event listener to close button
+        document.getElementById('closeWinHint').addEventListener('click', () => {
+            this.hideHint();
         });
+
+        console.log("✅ Win message displayed in hint box");
     }
 
     showHint() {
@@ -1330,6 +1320,7 @@ class SolitaireGame {
     }
 
     newGame() {
+        console.log("🔄 Starting new game...");
         clearInterval(this.timerInterval);
         clearInterval(this.moveCheckInterval);
         this.moveHistory.clear();
@@ -1354,6 +1345,13 @@ class SolitaireGame {
         this.consecutiveNoMoves = 0;
         this.stockRecycleCount = 0;
 
+        // Hide any open messages
+        this.hideHint();
+        const winMessage = document.getElementById('winMessage');
+        if (winMessage && !winMessage.classList.contains('hidden')) {
+            winMessage.classList.add('hidden');
+        }
+
         // Show instructions again for new game
         this.showInstructions();
     }
@@ -1364,9 +1362,8 @@ class SolitaireGame {
         document.getElementById('hintBtn').addEventListener('click', () => this.showHint());
         document.getElementById('undoBtn').addEventListener('click', () => this.undo());
         document.getElementById('redoBtn').addEventListener('click', () => this.redo());
-        document.getElementById('playAgain').addEventListener('click', () => this.newGame());
         document.getElementById('closeHint').addEventListener('click', () => this.hideHint());
-        
+
         // Add keyboard shortcuts
         this.setupKeyboardShortcuts();
     }
@@ -1383,25 +1380,25 @@ class SolitaireGame {
                 e.preventDefault();
                 this.drawCard();
             }
-            
+
             // H: Hint
             if (e.key === 'h' || e.key === 'H') {
                 e.preventDefault();
                 this.showHint();
             }
-            
+
             // Ctrl/Cmd + Z: Undo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 this.undo();
             }
-            
+
             // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z: Redo
             if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
                 e.preventDefault();
                 this.redo();
             }
-            
+
             // Escape: Close any open messages
             if (e.key === 'Escape') {
                 this.hideHint();
@@ -1410,7 +1407,7 @@ class SolitaireGame {
                     winMessage.classList.add('hidden');
                 }
             }
-            
+
             // Number keys 1-7: Auto-move to foundation from tableau columns
             if (e.key >= '1' && e.key <= '7') {
                 e.preventDefault();
@@ -1427,5 +1424,5 @@ class SolitaireGame {
 
 // Start the game
 document.addEventListener('DOMContentLoaded', () => {
-    new SolitaireGame();
+    window.solitaireGame = new SolitaireGame();
 });
