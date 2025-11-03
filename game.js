@@ -1,4 +1,4 @@
-// game.js - COMPLETE MODIFIED CODE with Stock Recycle Counter
+// game.js 
 class SolitaireGame {
     constructor() {
         this.SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -7,10 +7,10 @@ class SolitaireGame {
             'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
             '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13
         };
-        
+
         // Custom Data Structures
-        this.stock = [];
-        this.waste = [];
+        this.stock = new Stack();
+        this.waste = new Stack();
         this.foundations = {
             'hearts': new Stack(),
             'diamonds': new Stack(),
@@ -23,7 +23,7 @@ class SolitaireGame {
             new LinkedList()
         ];
         this.moveHistory = new MoveHistory();
-        
+
         this.moveCount = 0;
         this.score = 0;
         this.startTime = Date.now();
@@ -32,29 +32,26 @@ class SolitaireGame {
         this.dragSource = null;
         this.consecutiveNoMoves = 0;
         this.moveCheckInterval = null;
-        
-        // NEW: Stock recycle counter
-        this.stockRecycleCount = 0;
-        this.maxStockRecycles = 5; // Show message after 5 full stock cycles
 
-        this.initializeGame();
-        this.setupEventListeners();
-        this.startTimer();
-        this.setupDragAndDrop();
-        this.startMoveChecker();
+        // Stock recycle counter
+        this.stockRecycleCount = 0;
+        this.maxStockRecycles = 5;
+
+        // Show instructions first, then initialize game
+        this.showInstructions();
     }
 
     initializeGame() {
         console.log("🎮 Starting Solitaire Game...");
-        
-        // Create and shuffle deck
+
+        // Create and shuffle deck using custom structures
         const deck = this.createDeck();
         this.shuffleDeck(deck);
-        
+
         // Deal to tableau with ORIGINAL STAIR PATTERN
         for (let col = 0; col < 7; col++) {
             for (let row = 0; row <= col; row++) {
-                if (deck.length > 0) {
+                if (!deck.isEmpty()) {
                     const card = deck.pop();
                     // ONLY the top card (last card) in each column is face up
                     card.face_up = (row === col);
@@ -62,20 +59,29 @@ class SolitaireGame {
                 }
             }
         }
-        
-        // Remaining cards go to stock (as array)
-        this.stock = deck;
-        
-        // NEW: Reset recycle counter
+
+        // Remaining cards go to stock
+        while (!deck.isEmpty()) {
+            this.stock.push(deck.pop());
+        }
+
+        // Reset recycle counter
         this.stockRecycleCount = 0;
-        
+
         this.saveGameState();
         this.renderGame();
         this.updateStats();
+        
+        // Setup event listeners and start game features
+        this.setupEventListeners();
+        this.startTimer();
+        this.setupDragAndDrop();
+        this.startMoveChecker();
     }
-
+   
     createDeck() {
-        const deck = [];
+        // Deck is creating
+        const deck = new Stack();
         for (const suit of this.SUITS) {
             for (const rank of this.RANKS) {
                 deck.push({
@@ -91,72 +97,194 @@ class SolitaireGame {
     }
 
     shuffleDeck(deck) {
-        for (let i = deck.length - 1; i > 0; i--) {
+        // Convert stack to array for shuffling, then back to stack
+        const tempArray = [];
+        while (!deck.isEmpty()) {
+            tempArray.push(deck.pop());
+        }
+
+        // Shuffle the array
+        for (let i = tempArray.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [deck[i], deck[j]] = [deck[j], deck[i]];
+            [tempArray[i], tempArray[j]] = [tempArray[j], tempArray[i]];
+        }
+
+        // Push back to stack in shuffled order
+        for (let i = 0; i < tempArray.length; i++) {
+            deck.push(tempArray[i]);
         }
     }
 
-    // NEW: Start automatic move checking
+    // Show instructions in the hint message box before game starts
+    showInstructions() {
+        // Hide the close button for instructions
+        document.getElementById('closeHint').style.display = 'none';
+
+        // Use the existing hint message box to show instructions
+        document.getElementById('hintText').innerHTML = `
+            <div style="text-align: center; max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                <h2 style="color: #2E7D32; margin-bottom: 25px; font-size: 28px;">🎮 Welcome to Solitaire!</h2>
+                
+                <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #1565C0; margin-bottom: 10px; font-size: 18px;">🎯 Game Objective:</h3>
+                    <p style="margin: 5px 0; font-size: 15px;">Build all four foundations up from Ace to King, sorted by suit.</p>
+                </div>
+
+                <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #1565C0; margin-bottom: 10px; font-size: 18px;">🖱️ Mouse Controls:</h3>
+                    <ul style="padding-left: 20px; margin: 5px 0; font-size: 15px;">
+                        <li><strong>Click Draw Button</strong> - Draw 3 cards from stock</li>
+                        <li><strong>Click Waste Cards</strong> - Auto-move to foundation or tableau</li>
+                        <li><strong>Click Top Tableau Cards</strong> - Move to foundation</li>
+                        <li><strong>Drag & Drop</strong> - Move cards between tableau columns</li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #1565C0; margin-bottom: 10px; font-size: 18px;">⌨️ Keyboard Shortcuts:</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
+                        <div><kbd style="background: #e9ecef; padding: 3px 6px; border-radius: 3px;">Space</kbd> or <kbd style="background: #e9ecef; padding: 3px 6px; border-radius: 3px;">Enter</kbd> - Draw cards</div>
+                        <div><kbd style="background: #e9ecef; padding: 3px 6px; border-radius: 3px;">1-7</kbd> - Move to foundation</div>
+                        <div><kbd style="background: #e9ecef; padding: 3px 6px; border-radius: 3px;">H</kbd> - Show hint</div>
+                        <div><kbd style="background: #e9ecef; padding: 3px 6px; border-radius: 3px;">Ctrl+Z</kbd> - Undo move</div>
+                        <div><kbd style="background: #e9ecef; padding: 3px 6px; border-radius: 3px;">Ctrl+Y</kbd> - Redo move</div>
+                        <div><kbd style="background: #e9ecef; padding: 3px 6px; border-radius: 3px;">ESC</kbd> - Close messages</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #1565C0; margin-bottom: 10px; font-size: 18px;">📋 Basic Rules:</h3>
+                    <ul style="padding-left: 20px; margin: 5px 0; font-size: 15px;">
+                        <li>Build tableau in descending order with alternating colors</li>
+                        <li>Only Kings can be placed in empty tableau columns</li>
+                        <li>Foundations must start with Aces and build up sequentially</li>
+                        <li>You can recycle the stock pile ${this.maxStockRecycles} times maximum</li>
+                    </ul>
+                </div>
+
+                <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 2px solid #dee2e6;">
+                    <button id="startGameBtn" style="padding: 15px 50px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; margin-bottom: 10px;">
+                        Start Playing!
+                    </button>
+                    <p style="margin-top: 10px; font-size: 14px; color: #666;">Press ESC to close and start playing</p>
+                </div>
+            </div>
+        `;
+
+        // Show the message box
+        document.getElementById('hintMessage').classList.remove('hidden');
+
+        // Add event listener to start playing button
+        document.getElementById('startGameBtn').addEventListener('click', () => {
+            this.startGameAfterInstructions();
+        });
+
+        // Also allow closing with ESC key to start game
+        const escHandler = (e) => {
+            if (e.key === 'Escape' && !document.getElementById('hintMessage').classList.contains('hidden')) {
+                this.startGameAfterInstructions();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    startGameAfterInstructions() {
+        // Hide the instructions
+        document.getElementById('hintMessage').classList.add('hidden');
+        
+        // Show the close button again for regular hints
+        document.getElementById('closeHint').style.display = 'block';
+        
+        // Initialize the game
+        this.initializeGame();
+    }
+
+    // Helper methods for custom data structures
+    objectToArray(obj) {
+        const result = [];
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                result.push(obj[key]);
+            }
+        }
+        return result;
+    }
+
+    iterateObject(obj, callback) {
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                callback(obj[key], parseInt(key));
+            }
+        }
+    }
+
+    iterateLinkedList(list, callback) {
+        let current = list.head;
+        let index = 0;
+        while (current !== null) {
+            callback(current.data, index);
+            current = current.next;
+            index++;
+        }
+    }
+
+    linkedListToArray(linkedList) {
+        const result = [];
+        this.iterateLinkedList(linkedList, (card) => {
+            result.push(card);
+        });
+        return result;
+    }
+
+    // Start automatic move checking
     startMoveChecker() {
-        // Check for moves every 10 seconds
         this.moveCheckInterval = setInterval(() => {
             this.checkForPossibleMoves();
         }, 10000);
     }
 
-    // NEW: Check for possible moves automatically
     checkForPossibleMoves() {
-        // First check if we've hit the stock recycle limit
         if (this.stockRecycleCount >= this.maxStockRecycles) {
             this.showStockRecycleLimitMessage();
             return;
         }
-        
+
         if (this.hasPossibleMoves()) {
             this.consecutiveNoMoves = 0;
         } else {
             this.consecutiveNoMoves++;
-            if (this.consecutiveNoMoves >= 2) { // Only show after 2 consecutive checks
+            if (this.consecutiveNoMoves >= 2) {
                 this.showOutOfMovesMessage();
             }
         }
     }
 
-    // NEW: Comprehensive move checking
     hasPossibleMoves() {
-        // If we've hit the stock recycle limit, no more moves are possible
         if (this.stockRecycleCount >= this.maxStockRecycles) {
             return false;
         }
-        
-        // Check waste to tableau moves
+
         if (this.hasWasteToTableauMoves()) return true;
-        
-        // Check waste to foundation moves
         if (this.hasWasteToFoundationMoves()) return true;
-        
-        // Check tableau to tableau moves
         if (this.hasTableauToTableauMoves()) return true;
-        
-        // Check tableau to foundation moves
         if (this.hasTableauToFoundationMoves()) return true;
-        
-        // Check if we can draw cards (considering recycle limit)
-        if (this.stock.length > 0 || (this.stock.length === 0 && this.waste.length > 0 && this.stockRecycleCount < this.maxStockRecycles)) {
+
+        if (!this.stock.isEmpty() || (this.stock.isEmpty() && !this.waste.isEmpty() && this.stockRecycleCount < this.maxStockRecycles)) {
             return true;
         }
-        
+
         return false;
     }
 
-    // NEW: Check for waste to tableau moves
     hasWasteToTableauMoves() {
-        if (this.waste.length === 0) return false;
-        
+        if (this.waste.isEmpty()) return false;
+
         const visibleWasteCards = this.getVisibleWasteCards();
-        for (let wasteIndex = 0; wasteIndex < visibleWasteCards.length; wasteIndex++) {
-            const card = visibleWasteCards[wasteIndex];
+        const wasteArray = this.objectToArray(visibleWasteCards);
+
+        for (let wasteIndex = 0; wasteIndex < wasteArray.length; wasteIndex++) {
+            const card = wasteArray[wasteIndex];
             for (let col = 0; col < 7; col++) {
                 if (this.canMoveToTableau(card, col)) {
                     return true;
@@ -166,13 +294,14 @@ class SolitaireGame {
         return false;
     }
 
-    // NEW: Check for waste to foundation moves
     hasWasteToFoundationMoves() {
-        if (this.waste.length === 0) return false;
-        
+        if (this.waste.isEmpty()) return false;
+
         const visibleWasteCards = this.getVisibleWasteCards();
-        for (let wasteIndex = 0; wasteIndex < visibleWasteCards.length; wasteIndex++) {
-            const card = visibleWasteCards[wasteIndex];
+        const wasteArray = this.objectToArray(visibleWasteCards);
+
+        for (let wasteIndex = 0; wasteIndex < wasteArray.length; wasteIndex++) {
+            const card = wasteArray[wasteIndex];
             if (this.canMoveToFoundation(card)) {
                 return true;
             }
@@ -180,15 +309,13 @@ class SolitaireGame {
         return false;
     }
 
-    // NEW: Check for tableau to tableau moves
     hasTableauToTableauMoves() {
         for (let fromCol = 0; fromCol < 7; fromCol++) {
-            const sourceArray = this.tableau[fromCol].toArray();
-            for (let cardIndex = 0; cardIndex < sourceArray.length; cardIndex++) {
-                const card = sourceArray[cardIndex];
+            const columnArray = this.linkedListToArray(this.tableau[fromCol]);
+            for (let cardIndex = 0; cardIndex < columnArray.length; cardIndex++) {
+                const card = columnArray[cardIndex];
                 if (card.face_up) {
-                    // Check if this starts a valid sequence
-                    const sequence = sourceArray.slice(cardIndex);
+                    const sequence = columnArray.slice(cardIndex);
                     if (this.isValidCardSequence(sequence)) {
                         for (let toCol = 0; toCol < 7; toCol++) {
                             if (fromCol !== toCol && this.canMoveToTableau(card, toCol)) {
@@ -202,7 +329,6 @@ class SolitaireGame {
         return false;
     }
 
-    // NEW: Check for tableau to foundation moves
     hasTableauToFoundationMoves() {
         for (let col = 0; col < 7; col++) {
             if (!this.tableau[col].isEmpty()) {
@@ -215,283 +341,343 @@ class SolitaireGame {
         return false;
     }
 
-    // NEW: Show out of moves message
     showOutOfMovesMessage() {
         console.log("🚫 No more moves available!");
-        
-        // Create or show out of moves message
-        let outOfMovesEl = document.getElementById('outOfMovesMessage');
-        if (!outOfMovesEl) {
-            outOfMovesEl = document.createElement('div');
-            outOfMovesEl.id = 'outOfMovesMessage';
-            outOfMovesEl.className = 'message-overlay';
-            outOfMovesEl.innerHTML = `
-                <div class="message-box">
-                    <h2>No More Moves! 🎴</h2>
-                    <p>You've run out of possible moves.</p>
-                    <p>Final Score: <span id="finalScoreOut">${this.score}</span></p>
-                    <p>Moves: <span id="finalMovesOut">${this.moveCount}</span></p>
-                    <p>Time: <span id="finalTimeOut">${document.getElementById('timer').textContent}</span></p>
-                    <div class="message-buttons">
-                        <button id="newGameOut" class="btn btn-primary">New Game</button>
-                        <button id="continueGame" class="btn btn-secondary">Continue Anyway</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(outOfMovesEl);
-            
-            // Add event listeners
-            document.getElementById('newGameOut').addEventListener('click', () => {
-                this.newGame();
-                outOfMovesEl.remove();
-            });
-            
-            document.getElementById('continueGame').addEventListener('click', () => {
-                outOfMovesEl.remove();
-                this.consecutiveNoMoves = 0;
-            });
-        }
-        
-        outOfMovesEl.classList.remove('hidden');
+
+        // Use the existing hint message box
+        document.getElementById('hintText').innerHTML = `
+            <h3 style="margin: 0 0 15px 0; color: #d32f2f; text-align: center;">No More Moves! 🎴</h3>
+            <p style="margin: 8px 0; text-align: center;">You've run out of possible moves.</p>
+            <p style="margin: 8px 0; text-align: center;"><strong>Final Score:</strong> ${this.score}</p>
+            <p style="margin: 8px 0; text-align: center;"><strong>Moves:</strong> ${this.moveCount}</p>
+            <p style="margin: 8px 0; text-align: center;"><strong>Time:</strong> ${document.getElementById('timer').textContent}</p>
+            <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
+                <button id="newGameOut" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">New Game</button>
+                <button id="continueGame" style="padding: 10px 20px; background: #757575; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">Continue Anyway</button>
+            </div>
+        `;
+
+        // Show the message box
+        document.getElementById('hintMessage').classList.remove('hidden');
+
+        // Add event listeners to the buttons
+        document.getElementById('newGameOut').addEventListener('click', () => {
+            this.newGame();
+            this.hideHint();
+        });
+
+        document.getElementById('continueGame').addEventListener('click', () => {
+            this.hideHint();
+            this.consecutiveNoMoves = 0;
+        });
+
+        // Don't auto-hide since user needs to make a choice
     }
 
-    // NEW: Show message when stock recycle limit is reached
     showStockRecycleLimitMessage() {
-        console.log("🎴 Stock recycle limit reached - showing message");
-        
-        // Create or show stock recycle limit message
-        let recycleLimitEl = document.getElementById('stockRecycleLimitMessage');
-        if (!recycleLimitEl) {
-            recycleLimitEl = document.createElement('div');
-            recycleLimitEl.id = 'stockRecycleLimitMessage';
-            recycleLimitEl.className = 'message-overlay';
-            recycleLimitEl.innerHTML = `
-                <div class="message-box">
-                    <h2>Stock Limit Reached! ⚠️</h2>
-                    <p>You've recycled through the stock pile ${this.stockRecycleCount} times.</p>
-                    <p>The game allows maximum ${this.maxStockRecycles} full stock cycles.</p>
-                    <p>Final Score: <span id="finalScoreRecycle">${this.score}</span></p>
-                    <p>Moves: <span id="finalMovesRecycle">${this.moveCount}</span></p>
-                    <p>Time: <span id="finalTimeRecycle">${document.getElementById('timer').textContent}</span></p>
-                    <div class="message-buttons">
-                        <button id="newGameRecycle" class="btn btn-primary">New Game</button>
-                        <button id="continueRecycle" class="btn btn-secondary">Continue Anyway</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(recycleLimitEl);
-            
-            // Add event listeners
-            document.getElementById('newGameRecycle').addEventListener('click', () => {
-                this.newGame();
-                recycleLimitEl.remove();
-            });
-            
-            document.getElementById('continueRecycle').addEventListener('click', () => {
-                recycleLimitEl.remove();
-                // Allow continuing but don't reset the counter
-            });
-        }
-        
-        recycleLimitEl.classList.remove('hidden');
+        console.log("🎴 Stock recycle limit reached");
+
+        // Use the existing hint message box
+        document.getElementById('hintText').innerHTML = `
+            <h3 style="margin: 0 0 15px 0; color: #d32f2f; text-align: center;">Game Over! 🎴</h3>
+            <p style="margin: 8px 0; text-align: center;">You've recycled through the stock pile ${this.stockRecycleCount} times.</p>
+            <p style="margin: 8px 0; text-align: center;">The game allows maximum ${this.maxStockRecycles} full stock cycles.</p>
+            <p style="margin: 8px 0; text-align: center;"><strong>Final Score:</strong> ${this.score}</p>
+            <p style="margin: 8px 0; text-align: center;"><strong>Moves:</strong> ${this.moveCount}</p>
+            <p style="margin: 8px 0; text-align: center;"><strong>Time:</strong> ${document.getElementById('timer').textContent}</p>
+            <div style="margin-top: 20px; text-align: center;">
+                <button id="newGameRecycle" style="padding: 10px 30px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">New Game</button>
+            </div>
+        `;
+
+        // Show the message box
+        document.getElementById('hintMessage').classList.remove('hidden');
+
+        // Add event listener to the button
+        document.getElementById('newGameRecycle').addEventListener('click', () => {
+            this.newGame();
+            this.hideHint();
+        });
+
+        clearInterval(this.timerInterval);
+        clearInterval(this.moveCheckInterval);
+
+        // Don't auto-hide since it's a game over message
     }
 
-    // FIXED: THREE-CARD DRAW with stock recycle counting
     drawCard() {
-        if (this.stock.length === 0 && this.waste.length === 0) {
-            // Check if truly out of moves when stock and waste are empty
+        if (this.stockRecycleCount >= this.maxStockRecycles) {
+            this.showStockRecycleLimitMessage();
+            return false;
+        }
+
+        if (this.stock.isEmpty() && this.waste.isEmpty()) {
             setTimeout(() => this.checkForPossibleMoves(), 500);
             return false;
         }
-        
+
         const previousState = this.getGameState();
-        
-        if (this.stock.length === 0) {
-            // Reset stock from waste - INCREMENT RECYCLE COUNTER
+
+        if (this.stock.isEmpty()) {
             console.log("🔄 Resetting stock from waste...");
             this.stockRecycleCount++;
             console.log(`📊 Stock recycle count: ${this.stockRecycleCount}/${this.maxStockRecycles}`);
-            
-            const wasteCards = [...this.waste];
-            this.waste = [];
-            
-            wasteCards.reverse().forEach(card => {
+
+            // Transfer waste to stock
+            const tempStack = new Stack();
+            while (!this.waste.isEmpty()) {
+                const card = this.waste.pop();
                 card.face_up = false;
-                this.stock.push(card);
-            });
-            
-            console.log("✅ Stock reset with", this.stock.length, "cards");
-            
-            // NEW: Check if we've reached the maximum recycle limit
+                tempStack.push(card);
+            }
+
+            // Reverse the order by pushing to stock
+            while (!tempStack.isEmpty()) {
+                this.stock.push(tempStack.pop());
+            }
+
+            console.log("✅ Stock reset with", this.stock.size(), "cards");
+
             if (this.stockRecycleCount >= this.maxStockRecycles) {
                 console.log("🚫 Maximum stock recycles reached!");
-                setTimeout(() => this.showStockRecycleLimitMessage(), 500);
+                this.showStockRecycleLimitMessage();
             } else {
-                // Check for moves after reset
                 setTimeout(() => this.checkForPossibleMoves(), 500);
             }
         } else {
             // Draw THREE cards
             let cardsDrawn = 0;
-            while (this.stock.length > 0 && cardsDrawn < 3) {
+            while (!this.stock.isEmpty() && cardsDrawn < 3) {
                 const card = this.stock.pop();
                 card.face_up = true;
                 this.waste.push(card);
                 cardsDrawn++;
             }
             this.moveCount++;
-            this.consecutiveNoMoves = 0; // Reset no-moves counter
+            this.consecutiveNoMoves = 0;
         }
-        
-        this.moveHistory.recordMove('draw', previousState, { 
+
+        this.moveHistory.recordMove('draw', previousState, {
             cardsDrawn: 3,
-            stockRecycleCount: this.stockRecycleCount // Track in history
+            stockRecycleCount: this.stockRecycleCount
         });
         this.updateStats();
         this.renderGame();
         return true;
     }
 
-    // FIXED: Move ANY waste card to tableau with move checking
     moveWasteCardToTableau(wasteIndex, toCol) {
+        if (this.stockRecycleCount >= this.maxStockRecycles) {
+            return false;
+        }
+
         const visibleWasteCards = this.getVisibleWasteCards();
-        if (wasteIndex < 0 || wasteIndex >= visibleWasteCards.length) return false;
-        
-        const actualIndex = this.waste.length - visibleWasteCards.length + wasteIndex;
-        if (actualIndex < 0 || actualIndex >= this.waste.length) return false;
-        
-        const card = this.waste[actualIndex];
-        
+        const wasteArray = this.objectToArray(visibleWasteCards);
+
+        if (wasteIndex < 0 || wasteIndex >= wasteArray.length) return false;
+
+        // Calculate actual index in waste stack
+        const actualIndex = this.waste.size() - wasteArray.length + wasteIndex;
+        if (actualIndex < 0 || actualIndex >= this.waste.size()) return false;
+
+        // Get the card from waste
+        const card = wasteArray[wasteIndex];
+
         if (this.canMoveToTableau(card, toCol)) {
             const previousState = this.getGameState();
-            
-            const movedCard = this.waste.splice(actualIndex, 1)[0];
-            this.tableau[toCol].append(movedCard);
+
+            // Remove from waste - we need to reconstruct the waste without this card
+            const newWaste = new Stack();
+            const tempStack = new Stack();
+
+            // Transfer to temp stack to find the card
+            while (!this.waste.isEmpty()) {
+                tempStack.push(this.waste.pop());
+            }
+
+            // Transfer back, skipping the card we want to remove
+            let found = false;
+            while (!tempStack.isEmpty()) {
+                const currentCard = tempStack.pop();
+                if (!found && currentCard.id === card.id) {
+                    found = true;
+                    // Don't push this card back
+                    continue;
+                }
+                newWaste.push(currentCard);
+            }
+
+            this.waste = newWaste;
+            this.tableau[toCol].append(card);
             this.moveCount++;
             this.consecutiveNoMoves = 0;
-            
-            this.moveHistory.recordMove('waste_to_tableau', previousState, { 
-                toCol: toCol, 
-                card: movedCard,
+
+            this.moveHistory.recordMove('waste_to_tableau', previousState, {
+                toCol: toCol,
+                card: card,
                 wasteIndex: actualIndex
             });
             this.updateStats();
             this.renderGame();
-            
-            // Check for moves after successful move
+
             setTimeout(() => this.checkForPossibleMoves(), 100);
             return true;
         }
         return false;
     }
 
-    // FIXED: Move ANY waste card to foundation with move checking
     moveWasteCardToFoundation(wasteIndex) {
+        if (this.stockRecycleCount >= this.maxStockRecycles) {
+            return false;
+        }
+
         const visibleWasteCards = this.getVisibleWasteCards();
-        if (wasteIndex < 0 || wasteIndex >= visibleWasteCards.length) return false;
-        
-        const actualIndex = this.waste.length - visibleWasteCards.length + wasteIndex;
-        if (actualIndex < 0 || actualIndex >= this.waste.length) return false;
-        
-        const card = this.waste[actualIndex];
-        
+        const wasteArray = this.objectToArray(visibleWasteCards);
+
+        if (wasteIndex < 0 || wasteIndex >= wasteArray.length) return false;
+
+        const card = wasteArray[wasteIndex];
+
         if (this.canMoveToFoundation(card)) {
             const previousState = this.getGameState();
-            
-            const movedCard = this.waste.splice(actualIndex, 1)[0];
-            this.foundations[movedCard.suit].push(movedCard);
+
+            // Remove from waste
+            const newWaste = new Stack();
+            const tempStack = new Stack();
+
+            while (!this.waste.isEmpty()) {
+                tempStack.push(this.waste.pop());
+            }
+
+            let found = false;
+            while (!tempStack.isEmpty()) {
+                const currentCard = tempStack.pop();
+                if (!found && currentCard.id === card.id) {
+                    found = true;
+                    continue;
+                }
+                newWaste.push(currentCard);
+            }
+
+            this.waste = newWaste;
+            this.foundations[card.suit].push(card);
             this.moveCount++;
             this.consecutiveNoMoves = 0;
-            
+
             this.moveHistory.recordMove('waste_to_foundation', previousState, {
-                card: movedCard,
-                wasteIndex: actualIndex
+                card: card,
+                wasteIndex: wasteIndex
             });
             this.updateStats();
             this.renderGame();
-            
+
             this.checkWinCondition();
-            // Check for moves after successful move
             setTimeout(() => this.checkForPossibleMoves(), 100);
             return true;
         }
         return false;
     }
 
-    // FIXED: Get only the visible waste cards
     getVisibleWasteCards() {
-        const startIndex = Math.max(0, this.waste.length - 3);
-        return this.waste.slice(startIndex);
+        // Show last 3 cards from waste stack
+        const result = {};
+        const tempStack = new Stack();
+        let count = 0;
+        let index = 0;
+
+        // Transfer to temp stack to see the cards
+        while (!this.waste.isEmpty() && count < 3) {
+            const card = this.waste.pop();
+            tempStack.push(card);
+            result[index] = card;
+            index++;
+            count++;
+        }
+
+        // Put cards back
+        while (!tempStack.isEmpty()) {
+            this.waste.push(tempStack.pop());
+        }
+
+        return result;
     }
 
     moveTableauToFoundation(fromCol) {
+        if (this.stockRecycleCount >= this.maxStockRecycles) {
+            return false;
+        }
+
         if (this.tableau[fromCol].isEmpty()) return false;
-        
+
         const card = this.tableau[fromCol].getLast();
         if (this.canMoveToFoundation(card)) {
             const previousState = this.getGameState();
             const movedCard = this.tableau[fromCol].removeLast();
             this.foundations[movedCard.suit].push(movedCard);
-            
+
             if (!this.tableau[fromCol].isEmpty()) {
                 const newTopCard = this.tableau[fromCol].getLast();
                 newTopCard.face_up = true;
             }
-            
+
             this.moveCount++;
             this.consecutiveNoMoves = 0;
-            
+
             this.moveHistory.recordMove('tableau_to_foundation', previousState, {
                 fromCol: fromCol,
                 card: movedCard
             });
             this.updateStats();
             this.renderGame();
-            
+
             this.checkWinCondition();
-            // Check for moves after successful move
             setTimeout(() => this.checkForPossibleMoves(), 100);
             return true;
         }
         return false;
     }
 
-    // FIXED: Move sequence of cards between tableau columns with move checking
     moveTableauToTableau(fromCol, cardIndex, toCol) {
+        if (this.stockRecycleCount >= this.maxStockRecycles) {
+            return false;
+        }
+
         if (fromCol < 0 || fromCol > 6 || toCol < 0 || toCol > 6) return false;
         if (this.tableau[fromCol].isEmpty()) return false;
-        
-        const sourceArray = this.tableau[fromCol].toArray();
+
+        const sourceArray = this.linkedListToArray(this.tableau[fromCol]);
         if (cardIndex < 0 || cardIndex >= sourceArray.length) return false;
-        
+
         const movingCards = sourceArray.slice(cardIndex);
         const allFaceUp = movingCards.every(card => card.face_up);
         if (!allFaceUp) return false;
-        
+
         const isValidSequence = this.isValidCardSequence(movingCards);
         if (!isValidSequence) return false;
-        
+
         const movingCard = movingCards[0];
         if (!this.canMoveToTableau(movingCard, toCol)) return false;
-        
+
         const previousState = this.getGameState();
-        
+
+        // Remove cards from source using linked list operations
         const remainingCards = sourceArray.slice(0, cardIndex);
         this.tableau[fromCol] = new LinkedList();
         remainingCards.forEach(card => this.tableau[fromCol].append(card));
-        
+
+        // Add cards to target
         movingCards.forEach(card => {
             this.tableau[toCol].append(card);
         });
-        
+
         if (!this.tableau[fromCol].isEmpty()) {
             const newTopCard = this.tableau[fromCol].getLast();
             newTopCard.face_up = true;
         }
-        
+
         this.moveCount++;
         this.consecutiveNoMoves = 0;
-        
+
         this.moveHistory.recordMove('tableau_to_tableau', previousState, {
             fromCol: fromCol,
             toCol: toCol,
@@ -500,56 +686,52 @@ class SolitaireGame {
         });
         this.updateStats();
         this.renderGame();
-        
-        // Check for moves after successful move
+
         setTimeout(() => this.checkForPossibleMoves(), 100);
         return true;
     }
 
-    // Validate card sequence
     isValidCardSequence(cards) {
         if (cards.length === 1) return true;
-        
+
         for (let i = 0; i < cards.length - 1; i++) {
             const currentCard = cards[i];
             const nextCard = cards[i + 1];
-            
+
             if (currentCard.color === nextCard.color) return false;
             if (this.RANK_VALUES[currentCard.rank] !== this.RANK_VALUES[nextCard.rank] + 1) return false;
         }
-        
+
         return true;
     }
 
-    // Move validation methods
     canMoveToTableau(card, targetCol) {
         const targetPile = this.tableau[targetCol];
-        
+
         if (targetPile.isEmpty()) {
             return card.rank === 'K';
         }
-        
+
         const topCard = targetPile.getLast();
-        return (card.color !== topCard.color) && 
-               (this.RANK_VALUES[card.rank] === this.RANK_VALUES[topCard.rank] - 1);
+        return (card.color !== topCard.color) &&
+            (this.RANK_VALUES[card.rank] === this.RANK_VALUES[topCard.rank] - 1);
     }
 
     canMoveToFoundation(card) {
         const foundation = this.foundations[card.suit];
-        
+
         if (card.rank === 'A') {
             return foundation.isEmpty();
         }
-        
+
         if (foundation.isEmpty()) {
             return false;
         }
-        
+
         const topCard = foundation.peek();
         return this.RANK_VALUES[card.rank] === this.RANK_VALUES[topCard.rank] + 1;
     }
 
-    // Undo/Redo functionality
     undo() {
         const move = this.moveHistory.undo();
         if (move) {
@@ -572,47 +754,55 @@ class SolitaireGame {
         return false;
     }
 
-    // MODIFIED: Update game state to include stock recycle count
     getGameState() {
+        // Convert all custom structures to plain objects for serialization
+        const foundationsState = {};
+        for (const suit in this.foundations) {
+            foundationsState[suit] = this.objectToArray(this.foundations[suit].toArray());
+        }
+
+        const tableauState = [];
+        for (let i = 0; i < this.tableau.length; i++) {
+            tableauState.push(this.linkedListToArray(this.tableau[i]));
+        }
+
         return {
-            stock: [...this.stock],
-            waste: [...this.waste],
-            foundations: {
-                'hearts': this.foundations.hearts.toArray(),
-                'diamonds': this.foundations.diamonds.toArray(),
-                'clubs': this.foundations.clubs.toArray(),
-                'spades': this.foundations.spades.toArray()
-            },
-            tableau: this.tableau.map(pile => pile.toArray()),
+            stock: this.objectToArray(this.stock.toArray()),
+            waste: this.objectToArray(this.waste.toArray()),
+            foundations: foundationsState,
+            tableau: tableauState,
             moveCount: this.moveCount,
             score: this.score,
-            stockRecycleCount: this.stockRecycleCount // NEW: Include in saved state
+            stockRecycleCount: this.stockRecycleCount
         };
     }
 
-    // MODIFIED: Restore game state to include stock recycle count
     restoreGameState(state) {
-        this.stock = [...state.stock];
-        this.waste = [...state.waste];
-        
-        Object.keys(this.foundations).forEach(suit => {
+        // Restore stock
+        this.stock = new Stack();
+        state.stock.forEach(card => this.stock.push(card));
+
+        // Restore waste
+        this.waste = new Stack();
+        state.waste.forEach(card => this.waste.push(card));
+
+        // Restore foundations
+        for (const suit in this.foundations) {
             this.foundations[suit].clear();
-        });
-        Object.keys(state.foundations).forEach(suit => {
             state.foundations[suit].forEach(card => this.foundations[suit].push(card));
-        });
-        
-        this.tableau.forEach((pile, index) => {
-            pile.items = [];
-            state.tableau[index].forEach(card => pile.append(card));
-        });
-        
+        }
+
+        // Restore tableau
+        for (let i = 0; i < this.tableau.length; i++) {
+            this.tableau[i] = new LinkedList();
+            state.tableau[i].forEach(card => this.tableau[i].append(card));
+        }
+
         this.moveCount = state.moveCount;
         this.score = state.score;
-        this.stockRecycleCount = state.stockRecycleCount || 0; // NEW: Restore recycle count
+        this.stockRecycleCount = state.stockRecycleCount || 0;
     }
 
-    // Rendering methods
     renderGame() {
         this.renderStockAndWaste();
         this.renderFoundations();
@@ -623,12 +813,12 @@ class SolitaireGame {
     renderStockAndWaste() {
         const stock = document.getElementById('stock');
         const waste = document.getElementById('waste');
-        
+
         stock.innerHTML = '';
         waste.innerHTML = '';
-        
-        if (this.stock.length > 0) {
-            const stackSize = Math.min(3, this.stock.length);
+
+        if (!this.stock.isEmpty()) {
+            const stackSize = Math.min(3, this.stock.size());
             let stackHTML = '<div class="card-stack">';
             for (let i = 0; i < stackSize; i++) {
                 stackHTML += '<div class="card back animated-card"></div>';
@@ -636,26 +826,28 @@ class SolitaireGame {
             stackHTML += '</div>';
             stock.innerHTML = stackHTML;
         }
-        
+
         const visibleWasteCards = this.getVisibleWasteCards();
-        if (visibleWasteCards.length > 0) {
-            visibleWasteCards.forEach((card, visibleIndex) => {
+        const wasteArray = this.objectToArray(visibleWasteCards);
+
+        if (wasteArray.length > 0) {
+            wasteArray.forEach((card, visibleIndex) => {
                 const cardEl = this.createCardElement(card, 'waste', visibleIndex);
                 const offset = visibleIndex * 25;
                 cardEl.style.transform = `translateX(${offset}px)`;
                 cardEl.style.zIndex = visibleIndex;
-                
+
                 cardEl.setAttribute('draggable', 'true');
                 cardEl.classList.add('accessible-card');
                 cardEl.style.cursor = 'pointer';
-                
+
                 waste.appendChild(cardEl);
             });
 
-            if (this.waste.length > 3) {
+            if (this.waste.size() > 3) {
                 const countIndicator = document.createElement('div');
                 countIndicator.className = 'waste-count-indicator';
-                countIndicator.textContent = `+${this.waste.length - 3} more`;
+                countIndicator.textContent = `+${this.waste.size() - 3} more`;
                 countIndicator.style.cssText = `
                     position: absolute;
                     bottom: -25px;
@@ -671,17 +863,16 @@ class SolitaireGame {
                 waste.appendChild(countIndicator);
             }
         }
-
-        stock.addEventListener('click', () => this.drawCard());
+        // Only the draw button should draw cards
     }
 
     renderFoundations() {
         for (const [suit, foundation] of Object.entries(this.foundations)) {
             const foundationEl = document.querySelector(`.foundation[data-suit="${suit}"]`);
             if (!foundationEl) continue;
-            
+
             foundationEl.innerHTML = '';
-            
+
             if (!foundation.isEmpty()) {
                 const topCard = foundation.peek();
                 const cardEl = this.createCardElement(topCard, 'foundation', 0);
@@ -692,24 +883,24 @@ class SolitaireGame {
 
     renderTableau() {
         const tableau = document.getElementById('tableau');
-        
+
         this.tableau.forEach((column, colIndex) => {
             const columnEl = tableau.querySelector(`[data-col="${colIndex}"]`);
             if (!columnEl) return;
-            
+
             columnEl.innerHTML = '';
             columnEl.setAttribute('data-col', colIndex);
-            
-            const cards = column.toArray();
+
+            const cards = this.linkedListToArray(column);
             cards.forEach((card, cardIndex) => {
                 const cardEl = this.createCardElement(card, 'tableau', cardIndex, colIndex);
                 cardEl.style.marginTop = `${cardIndex * 30}px`;
                 columnEl.appendChild(cardEl);
-                
+
                 if (card.face_up) {
                     const sequenceFromHere = cards.slice(cardIndex);
                     const isValidSequence = this.isValidCardSequence(sequenceFromHere);
-                    
+
                     if (isValidSequence) {
                         cardEl.classList.add('accessible-card');
                         cardEl.setAttribute('draggable', 'true');
@@ -730,7 +921,7 @@ class SolitaireGame {
         const cardEl = document.createElement('div');
         cardEl.className = `card ${card.face_up ? 'front' : 'back'}`;
         cardEl.setAttribute('data-card-id', card.id);
-        
+
         if (card.face_up) {
             cardEl.classList.add(card.color);
             cardEl.innerHTML = `
@@ -769,9 +960,9 @@ class SolitaireGame {
                     }
                 });
             }
-            
+
             if (location === 'tableau') {
-                const cards = this.tableau[colIndex].toArray();
+                const cards = this.linkedListToArray(this.tableau[colIndex]);
                 if (visibleIndex === cards.length - 1) {
                     cardEl.addEventListener('click', () => {
                         this.moveTableauToFoundation(colIndex);
@@ -806,18 +997,18 @@ class SolitaireGame {
                 const location = e.target.getAttribute('data-location');
                 const visibleIndex = parseInt(e.target.getAttribute('data-index'));
                 const colIndex = e.target.hasAttribute('data-col') ? parseInt(e.target.getAttribute('data-col')) : null;
-                
+
                 this.dragSource = {
                     location: location,
                     col: colIndex,
                     index: visibleIndex,
-                    sequence: location === 'tableau' && colIndex !== null ? 
+                    sequence: location === 'tableau' && colIndex !== null ?
                         this.getDraggableSequence(colIndex, visibleIndex) : null
                 };
-                
+
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', e.target.getAttribute('data-card-id'));
-                
+
                 setTimeout(() => {
                     if (this.dragSource.sequence && this.dragSource.sequence.length > 1) {
                         this.highlightSequence(this.dragSource.sequence);
@@ -846,9 +1037,9 @@ class SolitaireGame {
 
         document.addEventListener('dragover', (e) => {
             e.preventDefault();
-            const target = e.target.closest('.tableau-column') || 
-                          e.target.closest('.foundation');
-            
+            const target = e.target.closest('.tableau-column') ||
+                e.target.closest('.foundation');
+
             if (target && target !== dragOverElement) {
                 if (dragOverElement) {
                     dragOverElement.classList.remove('drag-over');
@@ -859,9 +1050,9 @@ class SolitaireGame {
         });
 
         document.addEventListener('dragleave', (e) => {
-            const target = e.target.closest('.tableau-column') || 
-                          e.target.closest('.foundation');
-            
+            const target = e.target.closest('.tableau-column') ||
+                e.target.closest('.foundation');
+
             if (target && target === dragOverElement) {
                 if (!target.contains(e.relatedTarget)) {
                     target.classList.remove('drag-over');
@@ -872,17 +1063,17 @@ class SolitaireGame {
 
         document.addEventListener('drop', (e) => {
             e.preventDefault();
-            
+
             if (dragOverElement) {
                 dragOverElement.classList.remove('drag-over');
                 dragOverElement = null;
             }
-            
+
             if (!this.draggedCard || !this.dragSource) return;
 
-            const target = e.target.closest('.tableau-column') || 
-                          e.target.closest('.foundation');
-            
+            const target = e.target.closest('.tableau-column') ||
+                e.target.closest('.foundation');
+
             if (!target) return;
 
             if (target.classList.contains('tableau-column')) {
@@ -898,14 +1089,14 @@ class SolitaireGame {
     }
 
     getDraggableSequence(fromCol, cardIndex) {
-        const sourceArray = this.tableau[fromCol].toArray();
+        const sourceArray = this.linkedListToArray(this.tableau[fromCol]);
         if (cardIndex < 0 || cardIndex >= sourceArray.length) return null;
-        
+
         const potentialSequence = sourceArray.slice(cardIndex);
         if (this.isValidCardSequence(potentialSequence)) {
             return potentialSequence;
         }
-        
+
         return [sourceArray[cardIndex]];
     }
 
@@ -935,14 +1126,14 @@ class SolitaireGame {
         if (sourceLocation === 'tableau') {
             const fromCol = this.dragSource.col;
             if (this.dragSource.sequence && this.dragSource.sequence.length > 0) {
-                const sourceArray = this.tableau[fromCol].toArray();
+                const sourceArray = this.linkedListToArray(this.tableau[fromCol]);
                 const firstCardInSequence = this.dragSource.sequence[0];
                 const cardIndex = sourceArray.findIndex(card => card.id === firstCardInSequence.id);
                 if (cardIndex !== -1) {
                     this.moveTableauToTableau(fromCol, cardIndex, toCol);
                 }
             } else {
-                const sourceArray = this.tableau[fromCol].toArray();
+                const sourceArray = this.linkedListToArray(this.tableau[fromCol]);
                 const cardIndex = sourceArray.findIndex(card => card.id === this.draggedCard.getAttribute('data-card-id'));
                 if (cardIndex !== -1) {
                     this.moveTableauToTableau(fromCol, cardIndex, toCol);
@@ -964,7 +1155,6 @@ class SolitaireGame {
         }
     }
 
-    // Game management methods
     startTimer() {
         this.timerInterval = setInterval(() => {
             const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
@@ -979,26 +1169,23 @@ class SolitaireGame {
         let score = 1000;
         score -= this.moveCount * 2;
         score -= Math.floor(elapsedSeconds / 10);
-        
+
         let foundationCards = 0;
         for (const suit of this.SUITS) {
             foundationCards += this.foundations[suit].size();
         }
         score += foundationCards * 50;
-        
+
         this.score = Math.max(100, Math.floor(score));
         return this.score;
     }
 
-    // MODIFIED: Update stats to show recycle count
     updateStats() {
         document.getElementById('moveCount').textContent = this.moveCount;
         document.getElementById('score').textContent = this.calculateScore();
-        
-        // Optional: Show recycle count in UI for player awareness
+
         let recycleCounter = document.getElementById('recycleCounter');
         if (!recycleCounter) {
-            // Create recycle counter display if it doesn't exist
             const statsContainer = document.querySelector('.game-stats');
             if (statsContainer) {
                 recycleCounter = document.createElement('div');
@@ -1029,7 +1216,7 @@ class SolitaireGame {
                 return false;
             }
         }
-        
+
         this.showWinMessage();
         return true;
     }
@@ -1037,34 +1224,118 @@ class SolitaireGame {
     showWinMessage() {
         clearInterval(this.timerInterval);
         clearInterval(this.moveCheckInterval);
+        
+        // Style the win message to be centered and beautiful
+        const winMessage = document.getElementById('winMessage');
+        winMessage.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 1000;
+            min-width: 400px;
+            max-width: 500px;
+            font-family: Arial, sans-serif;
+        `;
+
+        // Style the content inside win message
+        winMessage.innerHTML = `
+            <div style="font-size: 4em; margin-bottom: 20px;">🎉</div>
+            <h2 style="font-size: 2em; margin: 0 0 15px 0; color: #2E7D32;">Congratulations!</h2>
+            <p style="font-size: 1.2em; margin: 0 0 25px 0; color: #666;">You've won the game!</p>
+            
+            <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: center;">
+                    <div>
+                        <div style="font-size: 1em; color: #666;">Final Score</div>
+                        <div style="font-size: 2em; font-weight: bold; color: #FF6B6B;">${this.score}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 1em; color: #666;">Total Moves</div>
+                        <div style="font-size: 2em; font-weight: bold; color: #4CAF50;">${this.moveCount}</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; font-size: 1.1em;">
+                    <div style="color: #666;">Time Completed</div>
+                    <div style="font-size: 1.3em; font-weight: bold; color: #2196F3;">${document.getElementById('timer').textContent}</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 25px;">
+                <button id="playAgainWin" style="
+                    padding: 15px 40px;
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    font-weight: bold;
+                    width: 100%;
+                ">
+                    🎮 Play Again
+                </button>
+            </div>
+        `;
+
+        // Update the stats
         document.getElementById('finalMoves').textContent = this.moveCount;
         document.getElementById('finalTime').textContent = document.getElementById('timer').textContent;
         document.getElementById('finalScore').textContent = this.score;
-        document.getElementById('winMessage').classList.remove('hidden');
+
+        // Show the win message
+        winMessage.classList.remove('hidden');
+
+        // Add event listener to the play again button
+        document.getElementById('playAgainWin').addEventListener('click', () => {
+            this.newGame();
+            winMessage.classList.add('hidden');
+        });
     }
 
     showHint() {
-        document.getElementById('hintText').textContent = "💡 TIP: Look for Aces to start foundations. Move Kings to empty columns. You can drag sequences of cards! If stuck, the game will notify you.";
+        document.getElementById('hintText').innerHTML = `
+            <div style="text-align: center;">
+                <strong style="display: block; margin-bottom: 15px; font-size: 1.2em; color: #333;">Game Tips & Shortcuts</strong>
+                <div style="text-align: left; display: inline-block; background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    • Look for Aces to start foundations<br>
+                    • Move Kings to empty columns<br>
+                    • You can drag sequences of cards!<br>
+                    • If stuck, the game will notify you
+                </div>
+                <br>
+                <div style="text-align: left; display: inline-block; background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    • <kbd>Space</kbd> or <kbd>Enter</kbd> - Draw cards<br>
+                    • <kbd>1-7</kbd> - Move top tableau card to foundation<br>
+                    • <kbd>H</kbd> - Show hint<br>
+                    • <kbd>Ctrl+Z</kbd> - Undo move<br>
+                    • <kbd>Ctrl+Y</kbd> - Redo move<br>
+                </div>
+            </div>
+        `;
         document.getElementById('hintMessage').classList.remove('hidden');
-        
-        // Auto-hide hint after 5 seconds
+
         setTimeout(() => {
             this.hideHint();
-        }, 5000);
+        }, 8000);
     }
 
     hideHint() {
         document.getElementById('hintMessage').classList.add('hidden');
     }
 
-    // MODIFIED: New game to reset recycle counter
     newGame() {
         clearInterval(this.timerInterval);
         clearInterval(this.moveCheckInterval);
         this.moveHistory.clear();
-        
-        this.stock = [];
-        this.waste = [];
+
+        this.stock = new Stack();
+        this.waste = new Stack();
         this.foundations = {
             'hearts': new Stack(),
             'diamonds': new Stack(),
@@ -1076,25 +1347,15 @@ class SolitaireGame {
             new LinkedList(), new LinkedList(), new LinkedList(),
             new LinkedList()
         ];
-        
+
         this.moveCount = 0;
         this.score = 0;
         this.startTime = Date.now();
         this.consecutiveNoMoves = 0;
-        this.stockRecycleCount = 0; // NEW: Reset recycle counter
-        
-        this.initializeGame();
-        
-        // Hide all messages
-        document.getElementById('winMessage').classList.add('hidden');
-        document.getElementById('hintMessage').classList.add('hidden');
-        const outOfMovesEl = document.getElementById('outOfMovesMessage');
-        if (outOfMovesEl) outOfMovesEl.remove();
-        const recycleLimitEl = document.getElementById('stockRecycleLimitMessage');
-        if (recycleLimitEl) recycleLimitEl.remove();
-        
-        this.startTimer();
-        this.startMoveChecker();
+        this.stockRecycleCount = 0;
+
+        // Show instructions again for new game
+        this.showInstructions();
     }
 
     setupEventListeners() {
@@ -1105,6 +1366,58 @@ class SolitaireGame {
         document.getElementById('redoBtn').addEventListener('click', () => this.redo());
         document.getElementById('playAgain').addEventListener('click', () => this.newGame());
         document.getElementById('closeHint').addEventListener('click', () => this.hideHint());
+        
+        // Add keyboard shortcuts
+        this.setupKeyboardShortcuts();
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts if user is typing in an input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            // Space or Enter: Draw Card
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                this.drawCard();
+            }
+            
+            // H: Hint
+            if (e.key === 'h' || e.key === 'H') {
+                e.preventDefault();
+                this.showHint();
+            }
+            
+            // Ctrl/Cmd + Z: Undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                this.undo();
+            }
+            
+            // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z: Redo
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                this.redo();
+            }
+            
+            // Escape: Close any open messages
+            if (e.key === 'Escape') {
+                this.hideHint();
+                const winMessage = document.getElementById('winMessage');
+                if (winMessage && !winMessage.classList.contains('hidden')) {
+                    winMessage.classList.add('hidden');
+                }
+            }
+            
+            // Number keys 1-7: Auto-move to foundation from tableau columns
+            if (e.key >= '1' && e.key <= '7') {
+                e.preventDefault();
+                const colIndex = parseInt(e.key) - 1;
+                this.moveTableauToFoundation(colIndex);
+            }
+        });
     }
 
     saveGameState() {

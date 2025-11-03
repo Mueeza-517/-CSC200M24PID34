@@ -5,19 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solitaire Game</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Background Elements -->
-      <!--   <div class="bg-elements">
-            <div class="bg-card bg-card-1">♠</div>
-            <div class="bg-card bg-card-2">♥</div>
-            <div class="bg-card bg-card-3">♣</div>
-            <div class="bg-card bg-card-4">♦</div>
-        </div> -->
+    <!-- Floating icons -->
+    <div class="floating-icons">
+        <div class="floating-icon">♥</div>
+        <div class="floating-icon">♦</div>
+        <div class="floating-icon">♣</div>
+        <div class="floating-icon">♠</div>
+        <div class="floating-icon">♥</div>
+        <div class="floating-icon">♦</div>
+        <div class="floating-icon">♣</div>
+        <div class="floating-icon">♠</div>
+    </div>
 
+    <div class="container">
         <header class="game-header">
             <div class="header-content">
                 <h1 class="game-title">Classic Solitaire</h1>
@@ -37,7 +40,7 @@
                 </div>
             </div>
         </header>
-
+        <!-- Game Buttons -->
         <div class="game-controls">
             <button class="btn btn-primary" id="newGame">
                 <i class="fas fa-plus-circle"></i> New Game
@@ -77,6 +80,7 @@
                     </div>
                 </div>
 
+                 <!-- Foundation Area -->
                 <div class="foundations-area">
                     <div class="foundations">
                         <div class="foundation-container">
@@ -144,7 +148,7 @@
 
         <div id="hintMessage" class="game-message hint-message hidden">
             <div class="message-content">
-                <h3>💡 Hint</h3>
+                <h3>Message</h3>
                 <p id="hintText"></p>
                 <button class="btn btn-info" id="closeHint">Got it!</button>
             </div>
