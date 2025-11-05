@@ -24,6 +24,9 @@ class SolitaireGame {
         ];
         this.moveHistory = new MoveHistory();
 
+        // USING QUEUE for recent moves display
+        this.recentMovesQueue = new Queue(); // Queue to track recent moves for display
+
         this.moveCount = 0;
         this.score = 0;
         this.startTime = Date.now();
@@ -36,6 +39,9 @@ class SolitaireGame {
         // Stock recycle counter
         this.stockRecycleCount = 0;
         this.maxStockRecycles = 5;
+
+        // Track if event listeners are already set up
+        this.eventListenersSetup = false;
 
         // Show instructions first, then initialize game
         this.showInstructions();
@@ -68,6 +74,10 @@ class SolitaireGame {
         // Reset recycle counter
         this.stockRecycleCount = 0;
 
+        // Initialize recent moves queue
+        this.recentMovesQueue.clear();
+        this.addRecentMove("Game started");
+
         this.saveGameState();
         this.renderGame();
         this.updateStats();
@@ -77,6 +87,33 @@ class SolitaireGame {
         this.startTimer();
         this.setupDragAndDrop();
         this.startMoveChecker();
+    }
+
+    // USING QUEUE: Add recent move to queue and maintain only last 5 moves
+    addRecentMove(moveDescription) {
+        this.recentMovesQueue.enqueue({
+            timestamp: new Date().toLocaleTimeString(),
+            description: moveDescription
+        });
+
+        // Keep only the last 5 moves in the queue
+        while (this.recentMovesQueue.size() > 5) {
+            this.recentMovesQueue.dequeue();
+        }
+    }
+
+    // USING QUEUE: Get recent moves for display
+    getRecentMoves() {
+        const movesArray = [];
+        const queueItems = this.recentMovesQueue.toArray();
+        
+        for (let key in queueItems) {
+            if (queueItems.hasOwnProperty(key)) {
+                movesArray.push(queueItems[key]);
+            }
+        }
+        
+        return movesArray;
     }
 
     createDeck() {
@@ -239,6 +276,11 @@ class SolitaireGame {
 
     // Start automatic move checking
     startMoveChecker() {
+        // Clear any existing interval first
+        if (this.moveCheckInterval) {
+            clearInterval(this.moveCheckInterval);
+        }
+        
         this.moveCheckInterval = setInterval(() => {
             this.checkForPossibleMoves();
         }, 10000);
@@ -403,6 +445,8 @@ class SolitaireGame {
     }
 
     drawCard() {
+        console.log("🃏 Drawing cards... Stock size:", this.stock.size(), "Waste size:", this.waste.size());
+        
         if (this.stockRecycleCount >= this.maxStockRecycles) {
             this.showStockRecycleLimitMessage();
             return false;
@@ -420,17 +464,22 @@ class SolitaireGame {
             this.stockRecycleCount++;
             console.log(`📊 Stock recycle count: ${this.stockRecycleCount}/${this.maxStockRecycles}`);
 
-            // Transfer waste to stock
-            const tempStack = new Stack();
+            // USING QUEUE: Add stock reset to recent moves
+            this.addRecentMove("Reset stock from waste");
+
+            // FIXED: Properly reset stock from waste
+            const tempArray = [];
+            
+            // Transfer all waste cards to temporary array
             while (!this.waste.isEmpty()) {
                 const card = this.waste.pop();
-                card.face_up = false;
-                tempStack.push(card);
+                card.face_up = false; // Turn all cards face down
+                tempArray.push(card);
             }
-
-            // Reverse the order by pushing to stock
-            while (!tempStack.isEmpty()) {
-                this.stock.push(tempStack.pop());
+            
+            // Push cards back to stock in reverse order (maintaining original order)
+            for (let i = tempArray.length - 1; i >= 0; i--) {
+                this.stock.push(tempArray[i]);
             }
 
             console.log("✅ Stock reset with", this.stock.size(), "cards");
@@ -442,16 +491,30 @@ class SolitaireGame {
                 setTimeout(() => this.checkForPossibleMoves(), 500);
             }
         } else {
-            // Draw THREE cards
+            // Draw THREE cards - FIXED: Properly draw exactly 3 cards
             let cardsDrawn = 0;
+            const tempWaste = new Stack(); // Temporary stack to maintain order
+            
+            // Draw up to 3 cards from stock
             while (!this.stock.isEmpty() && cardsDrawn < 3) {
                 const card = this.stock.pop();
                 card.face_up = true;
-                this.waste.push(card);
+                tempWaste.push(card); // Add to temporary waste first
                 cardsDrawn++;
             }
+            
+            // Transfer from temporary waste to actual waste (to maintain correct order)
+            while (!tempWaste.isEmpty()) {
+                this.waste.push(tempWaste.pop());
+            }
+            
             this.moveCount++;
             this.consecutiveNoMoves = 0;
+
+            // USING QUEUE: Add draw action to recent moves
+            this.addRecentMove(`Drew ${cardsDrawn} card(s) from stock`);
+            
+            console.log("✅ Drew", cardsDrawn, "cards. Stock remaining:", this.stock.size());
         }
 
         this.moveHistory.recordMove('draw', previousState, {
@@ -509,6 +572,9 @@ class SolitaireGame {
             this.moveCount++;
             this.consecutiveNoMoves = 0;
 
+            // USING QUEUE: Add move to recent moves
+            this.addRecentMove(`Moved ${card.rank}${this.getSuitSymbol(card.suit)} from waste to column ${toCol + 1}`);
+
             this.moveHistory.recordMove('waste_to_tableau', previousState, {
                 toCol: toCol,
                 card: card,
@@ -560,6 +626,9 @@ class SolitaireGame {
             this.foundations[card.suit].push(card);
             this.moveCount++;
             this.consecutiveNoMoves = 0;
+
+            // USING QUEUE: Add move to recent moves
+            this.addRecentMove(`Moved ${card.rank}${this.getSuitSymbol(card.suit)} from waste to ${card.suit} foundation`);
 
             this.moveHistory.recordMove('waste_to_foundation', previousState, {
                 card: card,
@@ -620,6 +689,9 @@ class SolitaireGame {
             this.moveCount++;
             this.consecutiveNoMoves = 0;
 
+            // USING QUEUE: Add move to recent moves
+            this.addRecentMove(`Moved ${movedCard.rank}${this.getSuitSymbol(movedCard.suit)} from column ${fromCol + 1} to ${movedCard.suit} foundation`);
+
             this.moveHistory.recordMove('tableau_to_foundation', previousState, {
                 fromCol: fromCol,
                 card: movedCard
@@ -674,6 +746,10 @@ class SolitaireGame {
 
         this.moveCount++;
         this.consecutiveNoMoves = 0;
+
+        // USING QUEUE: Add move to recent moves
+        const cardCount = movingCards.length;
+        this.addRecentMove(`Moved ${cardCount} card(s) from column ${fromCol + 1} to column ${toCol + 1}`);
 
         this.moveHistory.recordMove('tableau_to_tableau', previousState, {
             fromCol: fromCol,
@@ -733,6 +809,10 @@ class SolitaireGame {
         const move = this.moveHistory.undo();
         if (move) {
             this.restoreGameState(move.gameState);
+            
+            // USING QUEUE: Add undo to recent moves
+            this.addRecentMove("Undid last move");
+            
             this.updateStats();
             this.renderGame();
             return true;
@@ -744,6 +824,10 @@ class SolitaireGame {
         const move = this.moveHistory.redo();
         if (move) {
             this.restoreGameState(move.gameState);
+            
+            // USING QUEUE: Add redo to recent moves
+            this.addRecentMove("Redid move");
+            
             this.updateStats();
             this.renderGame();
             return true;
@@ -770,7 +854,8 @@ class SolitaireGame {
             tableau: tableauState,
             moveCount: this.moveCount,
             score: this.score,
-            stockRecycleCount: this.stockRecycleCount
+            stockRecycleCount: this.stockRecycleCount,
+            recentMoves: this.getRecentMoves() // Include recent moves in game state
         };
     }
 
@@ -798,6 +883,12 @@ class SolitaireGame {
         this.moveCount = state.moveCount;
         this.score = state.score;
         this.stockRecycleCount = state.stockRecycleCount || 0;
+
+        // Restore recent moves queue
+        if (state.recentMoves) {
+            this.recentMovesQueue.clear();
+            state.recentMoves.forEach(move => this.recentMovesQueue.enqueue(move));
+        }
     }
 
     renderGame() {
@@ -813,6 +904,42 @@ class SolitaireGame {
         this.renderFoundations();
         this.renderTableau();
         this.updateUndoRedoButtons();
+        this.renderRecentMoves(); // Render recent moves display
+    }
+
+    // USING QUEUE: Render recent moves display
+    renderRecentMoves() {
+        let recentMovesContainer = document.getElementById('recentMoves');
+        if (!recentMovesContainer) {
+            // Create recent moves container if it doesn't exist
+            const gameContainer = document.querySelector('.game-container');
+            if (gameContainer) {
+                recentMovesContainer = document.createElement('div');
+                recentMovesContainer.id = 'recentMoves';
+                recentMovesContainer.className = 'recent-moves';
+                recentMovesContainer.innerHTML = `
+                    <h3>Recent Moves</h3>
+                    <div id="recentMovesList"></div>
+                `;
+                gameContainer.appendChild(recentMovesContainer);
+            } else {
+                return;
+            }
+        }
+
+        const recentMovesList = document.getElementById('recentMovesList');
+        const moves = this.getRecentMoves();
+        
+        if (moves.length === 0) {
+            recentMovesList.innerHTML = '<p style="color: #666; font-style: italic;">No recent moves</p>';
+        } else {
+            recentMovesList.innerHTML = moves.map(move => 
+                `<div class="recent-move-item">
+                    <span class="move-time">${move.timestamp}</span>
+                    <span class="move-desc">${move.description}</span>
+                </div>`
+            ).join('');
+        }
     }
 
     renderStockAndWaste() {
@@ -1161,6 +1288,11 @@ class SolitaireGame {
     }
 
     startTimer() {
+        // Clear any existing timer first
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+        
         this.timerInterval = setInterval(() => {
             const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
             const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
@@ -1240,6 +1372,9 @@ class SolitaireGame {
 
         clearInterval(this.timerInterval);
         clearInterval(this.moveCheckInterval);
+
+        // USING QUEUE: Add win to recent moves
+        this.addRecentMove("🎉 Game Won!");
 
         // Use the hint message box instead of winMessage
         document.getElementById('hintText').innerHTML = `
@@ -1321,10 +1456,21 @@ class SolitaireGame {
 
     newGame() {
         console.log("🔄 Starting new game...");
-        clearInterval(this.timerInterval);
-        clearInterval(this.moveCheckInterval);
+        
+        // Clear all intervals
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        if (this.moveCheckInterval) {
+            clearInterval(this.moveCheckInterval);
+            this.moveCheckInterval = null;
+        }
+        
         this.moveHistory.clear();
+        this.recentMovesQueue.clear(); // Clear the queue for new game
 
+        // Reset all game state properly
         this.stock = new Stack();
         this.waste = new Stack();
         this.foundations = {
@@ -1345,6 +1491,9 @@ class SolitaireGame {
         this.consecutiveNoMoves = 0;
         this.stockRecycleCount = 0;
 
+        // Reset event listeners flag
+        this.eventListenersSetup = false;
+
         // Hide any open messages
         this.hideHint();
         const winMessage = document.getElementById('winMessage');
@@ -1357,19 +1506,57 @@ class SolitaireGame {
     }
 
     setupEventListeners() {
-        document.getElementById('newGame').addEventListener('click', () => this.newGame());
-        document.getElementById('drawCard').addEventListener('click', () => this.drawCard());
-        document.getElementById('hintBtn').addEventListener('click', () => this.showHint());
-        document.getElementById('undoBtn').addEventListener('click', () => this.undo());
-        document.getElementById('redoBtn').addEventListener('click', () => this.redo());
-        document.getElementById('closeHint').addEventListener('click', () => this.hideHint());
+        // Only setup event listeners once
+        if (this.eventListenersSetup) {
+            return;
+        }
 
-        // Add keyboard shortcuts
+        console.log("🔧 Setting up event listeners...");
+
+        // Remove any existing event listeners first by cloning and replacing
+        const newGameBtn = document.getElementById('newGame');
+        const drawCardBtn = document.getElementById('drawCard');
+        const hintBtn = document.getElementById('hintBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const closeHintBtn = document.getElementById('closeHint');
+
+        // Clone and replace buttons to remove all existing event listeners
+        const newNewGameBtn = newGameBtn.cloneNode(true);
+        const newDrawCardBtn = drawCardBtn.cloneNode(true);
+        const newHintBtn = hintBtn.cloneNode(true);
+        const newUndoBtn = undoBtn.cloneNode(true);
+        const newRedoBtn = redoBtn.cloneNode(true);
+        const newCloseHintBtn = closeHintBtn.cloneNode(true);
+
+        newGameBtn.parentNode.replaceChild(newNewGameBtn, newGameBtn);
+        drawCardBtn.parentNode.replaceChild(newDrawCardBtn, drawCardBtn);
+        hintBtn.parentNode.replaceChild(newHintBtn, hintBtn);
+        undoBtn.parentNode.replaceChild(newUndoBtn, undoBtn);
+        redoBtn.parentNode.replaceChild(newRedoBtn, redoBtn);
+        closeHintBtn.parentNode.replaceChild(newCloseHintBtn, closeHintBtn);
+
+        // Add fresh event listeners
+        newNewGameBtn.addEventListener('click', () => this.newGame());
+        newDrawCardBtn.addEventListener('click', () => this.drawCard());
+        newHintBtn.addEventListener('click', () => this.showHint());
+        newUndoBtn.addEventListener('click', () => this.undo());
+        newRedoBtn.addEventListener('click', () => this.redo());
+        newCloseHintBtn.addEventListener('click', () => this.hideHint());
+
+        // Add keyboard shortcuts (only once)
         this.setupKeyboardShortcuts();
+
+        this.eventListenersSetup = true;
+        console.log("✅ Event listeners setup complete");
     }
 
     setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
+        // Remove any existing keyboard event listeners
+        document.removeEventListener('keydown', this.keyboardHandler);
+        
+        // Create new keyboard handler
+        this.keyboardHandler = (e) => {
             // Don't trigger shortcuts if user is typing in an input field
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;
@@ -1414,7 +1601,10 @@ class SolitaireGame {
                 const colIndex = parseInt(e.key) - 1;
                 this.moveTableauToFoundation(colIndex);
             }
-        });
+        };
+
+        // Add the new keyboard handler
+        document.addEventListener('keydown', this.keyboardHandler);
     }
 
     saveGameState() {
